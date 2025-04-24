@@ -1,0 +1,45 @@
+{
+  "name": "interview-helper",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@progress/kendo-drawing": "^1.17.5",
+    "@progress/kendo-licensing": "^1.3.0",
+    "@progress/kendo-react-pdf": "^5.13.1",
+    "@react-pdf/renderer": "^3.1.9",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-draggable": "^4.4.5",
+    "react-pdf-printer": "^1.4.3",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build && mv build/static/js/main.*.js build/static/js/interviewHelper.js && mv build/static/css/main.*.css build/static/css/interviewHelper.css && rm build/static/js/*.map build/static/css/*.map && cp ./manifest.json build/manifest.json",
+    "test": "react-scripts test",
+
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
