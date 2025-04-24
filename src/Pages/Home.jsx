@@ -1,20 +1,15 @@
 /* eslint-disable no-undef */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
+import PropTypes from "prop-types";
 import PrintableArea from "./Component/PrintableArea";
 import { savePDF } from "@progress/kendo-react-pdf";
 import leftArrow from "../leftArrow.png";
 import QuestionJSON from "./Util/questions.json";
+import useLocalStorage from "../hooks/useLocalStorage";
+import { shuffleArray } from "../utils/arrayUtils";
 import "../App.css";
 
-function shuffleArray(array, endIndex = 10) {
-  const shuffled = array.slice();
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, endIndex);
-}
-
+// Constants
 const QUESTIONS_EMPTY_STATE = {
   JS: [],
   React: [],
@@ -24,115 +19,77 @@ const QUESTIONS_EMPTY_STATE = {
   Others: [],
 };
 
-export const PLAN_NAME = window.localStorage.getItem("planName") || "PAID";
+export const STORAGE_KEYS = {
+  QUESTIONS: "questions",
+  FEEDBACK: "feedback",
+  PLAN_NAME: "planName"
+};
+
+export const PLAN_NAME = window.localStorage.getItem(STORAGE_KEYS.PLAN_NAME) || "PAID";
+
+const ActionButton = memo(({ onClick, className, children }) => (
+  <button onClick={onClick} className={`m-3 btn ${className}`}>
+    {children}
+  </button>
+));
+
+ActionButton.propTypes = {
+  onClick: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  children: PropTypes.node.isRequired
+};
+
+ActionButton.defaultProps = {
+  className: "btn-success"
+};
 
 function Home() {
-
-  const [formValues, setFormValues] = useState(() => {
-    const initValue = JSON.parse(
-      window.localStorage.getItem("questions") || "{}"
-    );
-    return initValue.formValues || {};
+  const [storedData, setStoredData, clearStoredData] = useLocalStorage(STORAGE_KEYS.QUESTIONS, {
+    formValues: {},
+    questions: QUESTIONS_EMPTY_STATE
   });
 
-  const [questions, setQuestions] = useState(() => {
-    const initValue = JSON.parse(
-      window.localStorage.getItem("questions") || "{}"
-    );
-    return initValue.questions || QUESTIONS_EMPTY_STATE;
-  });
-
-  const [currentState, setCurrentState] = useState(1);
+  const [formValues, setFormValues] = useState(storedData.formValues || {});
+  const [questions, setQuestions] = useState(storedData.questions || QUESTIONS_EMPTY_STATE);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    const handleKeyUp = (e) => {
-      if (e.key === "m" && e.ctrlKey) {
-        hide();
-      }
-    };
-    document.addEventListener("keyup", handleKeyUp);
+    setStoredData({
+      formValues,
+      questions
+    });
+  }, [formValues, questions, setStoredData]);
 
-    return () => {
-      document.removeEventListener("keyup", handleKeyUp);
-    };
+  const onEditForm = useCallback((key, val) => {
+    setFormValues(prevValues => ({
+      ...prevValues,
+      [key]: val
+    }));
   }, []);
 
-  const onEditForm = (key, val) => {
-    const updatedFormValues = { ...formValues, [key]: val };
-    setFormValues(updatedFormValues);
-    saveItForLater(updatedFormValues);
-  };
+  const onSetQuestions = useCallback((newQuestions) => {
+    setQuestions(newQuestions);
+  }, []);
 
-  const onSetQuestions = (newQuestion) => {
-    setQuestions(newQuestion);
-    saveItForLater(formValues, newQuestion);
-  };
-
-  const print = () => {
-    if (!formValues.name || !formValues.round || !formValues.role) {
-      alert("Please provide name, round, and role.");
-      return;
-    }
-
-    if (!JSON.parse(window.localStorage.getItem("feedback") || "[]").length) {
-      alert("Please provide feedback for the candidate.");
-      return;
-    }
-
-    const elementToPrint = document.querySelector(".print_wrapper");
-    const elementsToHide = document.querySelectorAll(".ignorePDF");
-    const inputsAndSelects = document.querySelectorAll("input, select");
-
-    elementsToHide.forEach((el) => (el.style.display = "none"));
-    
-    elementToPrint.style.color = "black";
-    inputsAndSelects.forEach((el) => (el.style.color = "black"));
-
-    savePDF(
-      elementToPrint,
-      {
-        paperSize: "A4",
-        fileName: `${formValues.name}-${formValues.round}-${formValues.role}`,
-        margin: 10,
-      },
-      () => {
-        elementToPrint.style.color = "white";
-        elementsToHide.forEach((el) => (el.style.display = "inline"));
-        inputsAndSelects.forEach((el) => (el.style.color = "white"));
-      }
-    );
-  };
-
-  const saveItForLater = (
-    updatedFormVal = formValues,
-    updatedQuestions = questions
-  ) => {
-    window.localStorage.setItem(
-      "questions",
-      JSON.stringify({
-        formValues: updatedFormVal,
-        questions: updatedQuestions,
-      })
-    );
-  };
-
-  const clearIt = () => {
-    window.localStorage.removeItem("questions");
+  const clearIt = useCallback(() => {
+    clearStoredData();
+    setFormValues({});
     setQuestions(QUESTIONS_EMPTY_STATE);
-  };
+  }, [clearStoredData]);
 
-  const generateQuestion = () => {
-    setQuestions({
+  const generateQuestion = useCallback(() => {
+    const newQuestions = {
       JS: shuffleArray(QuestionJSON.JS),
       React: shuffleArray(QuestionJSON.React),
       Node: shuffleArray(QuestionJSON.Node),
       MongoDB: shuffleArray(QuestionJSON.MongoDB),
       ProblemSolving: shuffleArray(QuestionJSON.ProblemSolving, 2),
       Others: [],
-    });
-  };
+    };
+    setQuestions(newQuestions);
+  }, []);
 
-  const generateSpecficQuestionTopic = (topic, isRemove) => {
+  const generateSpecificQuestionTopic = useCallback((topic, isRemove) => {
     setQuestions((prevQuestions) => ({
       ...prevQuestions,
       [topic]: isRemove
@@ -142,32 +99,93 @@ function Home() {
             topic === "ProblemSolving" ? 2 : 10
           ),
     }));
-  };
+  }, []);
 
-  const hide = () => {
+  const hide = useCallback(() => {
     const reactApp = document.querySelector("#react-chrome-app");
-    if (reactApp.style.height !== "0px") {
+    if (!reactApp) return;
+
+    if (!isCollapsed) {
       reactApp.style.height = "0px";
       reactApp.style.width = "50px";
       reactApp.style.overflowY = "hidden";
-      setCurrentState(0);
     } else {
       reactApp.style.height = "100vh";
       reactApp.style.width = "490px";
       reactApp.style.overflowY = "scroll";
-      setCurrentState(1);
     }
-  };
+    setIsCollapsed(!isCollapsed);
+  }, [isCollapsed]);
+
+  const [feedback] = useLocalStorage(STORAGE_KEYS.FEEDBACK, []);
+
+  const print = useCallback(() => {
+    if (!formValues.name || !formValues.round || !formValues.role) {
+      alert("Please provide name, round, and role.");
+      return;
+    }
+
+    try {
+      if (!feedback.length) {
+        alert("Please provide feedback for the candidate.");
+        return;
+      }
+
+      const elementToPrint = document.querySelector(".print_wrapper");
+      if (!elementToPrint) {
+        console.error("Print wrapper element not found");
+        return;
+      }
+
+      const elementsToHide = document.querySelectorAll(".ignorePDF");
+      const inputsAndSelects = document.querySelectorAll("input, select");
+
+      elementsToHide.forEach((el) => (el.style.display = "none"));
+
+      elementToPrint.style.color = "black";
+      inputsAndSelects.forEach((el) => (el.style.color = "black"));
+
+      savePDF(
+        elementToPrint,
+        {
+          paperSize: "A4",
+          fileName: `${formValues.name}-${formValues.round}-${formValues.role}`,
+          margin: 10,
+        },
+        () => {
+          elementToPrint.style.color = "white";
+          elementsToHide.forEach((el) => (el.style.display = "inline"));
+          inputsAndSelects.forEach((el) => (el.style.color = "white"));
+        }
+      );
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("An error occurred while generating the PDF. Please try again.");
+    }
+  }, [formValues, feedback]);
+
+  useEffect(() => {
+    const handleKeyUp = (e) => {
+      if (e.key === "m" && e.ctrlKey) {
+        hide();
+      }
+    };
+
+    document.addEventListener("keyup", handleKeyUp);
+    return () => {
+      document.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [hide]);
 
   return (
     <>
       <div className="d-flex container w-100">
-        <button onClick={print} className="m-3 btn btn-success">
+        <ActionButton onClick={print}>
           Print
-        </button>
-        <button onClick={generateQuestion} className="m-3 btn btn-success">
-          Generate Question
-        </button>
+        </ActionButton>
+        <ActionButton onClick={generateQuestion}>
+          Generate Questions
+        </ActionButton>
         <div
           onClick={hide}
           className="m-3"
@@ -184,15 +202,12 @@ function Home() {
       </div>
       {PLAN_NAME !== "FREE" && (
         <div className="d-flex container w-100">
-          <button
-            onClick={() => saveItForLater()}
-            className="m-3 btn btn-success"
-          >
+          <ActionButton onClick={() => saveItForLater()}>
             Save
-          </button>
-          <button onClick={clearIt} className="m-3 btn btn-success">
+          </ActionButton>
+          <ActionButton onClick={clearIt}>
             Clear
-          </button>
+          </ActionButton>
         </div>
       )}
       <PrintableArea
@@ -200,7 +215,7 @@ function Home() {
         formValues={formValues}
         questions={questions}
         setQuestions={onSetQuestions}
-        generateSpecficQuestionTopic={generateSpecficQuestionTopic}
+        generateSpecificQuestionTopic={generateSpecificQuestionTopic}
       />
     </>
   );

@@ -1,23 +1,33 @@
+import { memo } from "react";
+import PropTypes from "prop-types";
 import Form from "./Form";
-import Question from "./Question";
+import QuestionComponent from "./Question";
 
-function PrintableArea({
+const PrintableArea = memo(({
   onEditForm,
   formValues,
   questions,
   setQuestions,
-  generateSpecficQuestionTopic,
-}) {
+  generateSpecificQuestionTopic,
+}) => {
   return (
     <div className="App print_wrapper">
       <Form onEditForm={onEditForm} formValues={formValues} />
-      <Question
+      <QuestionComponent
         questions={questions}
         setQuestions={setQuestions}
-        generateSpecficQuestionTopic={generateSpecficQuestionTopic}
+        generateSpecificQuestionTopic={generateSpecificQuestionTopic}
       />
     </div>
   );
-}
+});
+
+PrintableArea.propTypes = {
+  onEditForm: PropTypes.func.isRequired,
+  formValues: PropTypes.object.isRequired,
+  questions: PropTypes.object.isRequired,
+  setQuestions: PropTypes.func.isRequired,
+  generateSpecificQuestionTopic: PropTypes.func.isRequired
+};
 
 export default PrintableArea;

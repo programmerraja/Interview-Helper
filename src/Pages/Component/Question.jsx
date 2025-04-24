@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import { PLAN_NAME } from "../Home";
+import { useEffect, useState, useCallback, memo } from "react";
+import PropTypes from "prop-types";
+import { PLAN_NAME, STORAGE_KEYS } from "../Home";
+import useLocalStorage from "../../hooks/useLocalStorage";
 
-function Form({ setQuestions, questions, generateSpecficQuestionTopic }) {
+const QuestionComponent = memo(({ setQuestions, questions, generateSpecificQuestionTopic }) => {
   return (
     <div className="container mt-4 w-100">
       <div className="row px-4">
@@ -11,25 +13,32 @@ function Form({ setQuestions, questions, generateSpecficQuestionTopic }) {
             topic={topic}
             questions={questions}
             setQuestions={setQuestions}
-            generateSpecficQuestionTopic={generateSpecficQuestionTopic}
+            generateSpecificQuestionTopic={generateSpecificQuestionTopic}
           />
         ))}
       </div>
       <div className="row px-4">
-        <FeedBackForm />
+        <FeedbackForm />
       </div>
     </div>
   );
-}
+});
 
-function TopicSection({
+QuestionComponent.propTypes = {
+  setQuestions: PropTypes.func.isRequired,
+  questions: PropTypes.object.isRequired,
+  generateSpecificQuestionTopic: PropTypes.func.isRequired
+};
+
+// Topic section component
+const TopicSection = memo(({
   topic,
   questions,
   setQuestions,
-  generateSpecficQuestionTopic,
-}) {
-  const handleGenerate = () => generateSpecficQuestionTopic(topic);
-  const handleRemove = () => generateSpecficQuestionTopic(topic, true);
+  generateSpecificQuestionTopic,
+}) => {
+  const handleGenerate = useCallback(() => generateSpecificQuestionTopic(topic), [generateSpecificQuestionTopic, topic]);
+  const handleRemove = useCallback(() => generateSpecificQuestionTopic(topic, true), [generateSpecificQuestionTopic, topic]);
 
   return (
     <div className="topic-section">
@@ -38,7 +47,7 @@ function TopicSection({
         {topic !== "Others" && PLAN_NAME !== "FREE" && (
           <div className="d-flex align-items-center ignorePDF">
             <button className="btn btn-link ignorePDF" onClick={handleGenerate}>
-              <div class="reloadSingle"></div>
+              <div className="reloadSingle"></div>
             </button>
             <button className="btn btn-link text-danger" onClick={handleRemove}>
               <i className="fa crossIcon ignorePDF" aria-hidden="true"></i>
@@ -53,9 +62,16 @@ function TopicSection({
       />
     </div>
   );
-}
+});
 
-function QuestionList({ topic, questions, setQuestions }) {
+TopicSection.propTypes = {
+  topic: PropTypes.string.isRequired,
+  questions: PropTypes.object.isRequired,
+  setQuestions: PropTypes.func.isRequired,
+  generateSpecificQuestionTopic: PropTypes.func.isRequired
+};
+
+const QuestionList = memo(({ topic, questions, setQuestions }) => {
   const [currentQuestions, setCurrentQuestions] = useState(
     questions[topic] || []
   );
@@ -65,20 +81,25 @@ function QuestionList({ topic, questions, setQuestions }) {
     setCurrentQuestions(questions[topic] || []);
   }, [questions, topic]);
 
-  const addQuestion = (event, input) => {
+  // Add a new question
+  const addQuestion = useCallback((event, input) => {
     if (event.key === "Enter" && input.value.trim()) {
-      const updatedQuestions = [...currentQuestions, input.value];
+      const updatedQuestions = [...currentQuestions, input.value.trim()];
       setCurrentQuestions(updatedQuestions);
       setQuestions({ ...questions, [topic]: updatedQuestions });
       setNewQuestion("");
     }
-  };
+  }, [currentQuestions, questions, setQuestions, topic]);
 
-  const removeQuestion = (index) => {
+  const removeQuestion = useCallback((index) => {
     const updatedQuestions = currentQuestions.filter((_, i) => i !== index);
     setCurrentQuestions(updatedQuestions);
     setQuestions({ ...questions, [topic]: updatedQuestions });
-  };
+  }, [currentQuestions, questions, setQuestions, topic]);
+
+  const handleInputChange = useCallback((e) => {
+    setNewQuestion(e.target.value);
+  }, []);
 
   return (
     <div>
@@ -93,6 +114,7 @@ function QuestionList({ topic, questions, setQuestions }) {
             <button
               className="btn btn-link text-danger"
               onClick={() => removeQuestion(index)}
+              aria-label="Remove question"
             >
               <i className="fa crossIcon ignorePDF">&#x2717;</i>
             </button>
@@ -105,35 +127,39 @@ function QuestionList({ topic, questions, setQuestions }) {
         placeholder="Write your question and press enter"
         onKeyDown={(e) => addQuestion(e, e.target)}
         value={newQuestion}
-        onChange={(e) => setNewQuestion(e.target.value)}
+        onChange={handleInputChange}
+        aria-label="Add new question"
       />
     </div>
   );
-}
+});
 
-function FeedBackForm() {
-  const [feedbacks, setFeedbacks] = useState(() => {
-    return JSON.parse(window.localStorage.getItem("feedback") || "[]");
-  });
-  const [newFeedback, setNewFeedback] = useState(() => {
-    return window.localStorage.getItem("feedbackNew") || "";
-  });
+QuestionList.propTypes = {
+  topic: PropTypes.string.isRequired,
+  questions: PropTypes.object.isRequired,
+  setQuestions: PropTypes.func.isRequired
+};
 
-  const addFeedback = (event, input) => {
+const FeedbackForm = memo(() => {
+  const [feedbacks, setFeedbacks] = useLocalStorage(STORAGE_KEYS.FEEDBACK, []);
+  const [newFeedback, setNewFeedback] = useLocalStorage("feedbackNew", "");
+
+  const addFeedback = useCallback((event, input) => {
     if (event.key === "Enter" && input.value.trim()) {
-      const updatedFeedbacks = [...feedbacks, input.value];
+      const updatedFeedbacks = [...feedbacks, input.value.trim()];
       setFeedbacks(updatedFeedbacks);
       setNewFeedback("");
-      window.localStorage.setItem("feedback", JSON.stringify(updatedFeedbacks));
-      window.localStorage.setItem("feedbackNew", "");
     }
-  };
+  }, [feedbacks, setFeedbacks, setNewFeedback]);
 
-  const removeFeedback = (index) => {
+  const removeFeedback = useCallback((index) => {
     const updatedFeedbacks = feedbacks.filter((_, i) => i !== index);
     setFeedbacks(updatedFeedbacks);
-    window.localStorage.setItem("feedback", JSON.stringify(updatedFeedbacks));
-  };
+  }, [feedbacks, setFeedbacks]);
+
+  const handleInputChange = useCallback((e) => {
+    setNewFeedback(e.target.value);
+  }, [setNewFeedback]);
 
   return (
     <div>
@@ -145,8 +171,9 @@ function FeedBackForm() {
             <button
               className="btn btn-link text-danger"
               onClick={() => removeFeedback(index)}
+              aria-label="Remove feedback"
             >
-              <i className="fa fa-times" aria-hidden="true"></i>
+              <i className="fa crossIcon ignorePDF">&#x2717;</i>
             </button>
           </li>
         ))}
@@ -156,10 +183,11 @@ function FeedBackForm() {
         placeholder="Write your feedback and press enter"
         onKeyDown={(e) => addFeedback(e, e.target)}
         value={newFeedback}
-        onChange={(e) => setNewFeedback(e.target.value)}
+        onChange={handleInputChange}
+        aria-label="Add new feedback"
       />
     </div>
   );
-}
+});
 
-export default Form;
+export default QuestionComponent;
