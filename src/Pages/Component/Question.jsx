@@ -150,16 +150,16 @@ const FeedbackForm = memo(() => {
       setFeedbacks(updatedFeedbacks);
       setNewFeedback("");
     }
-  }, [feedbacks, setFeedbacks, setNewFeedback]);
+  }, [feedbacks]);
 
   const removeFeedback = useCallback((index) => {
     const updatedFeedbacks = feedbacks.filter((_, i) => i !== index);
     setFeedbacks(updatedFeedbacks);
-  }, [feedbacks, setFeedbacks]);
+  }, [feedbacks]);
 
   const handleInputChange = useCallback((e) => {
     setNewFeedback(e.target.value);
-  }, [setNewFeedback]);
+  }, []);
 
   return (
     <div>

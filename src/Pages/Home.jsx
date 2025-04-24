@@ -117,8 +117,6 @@ function Home() {
     setIsCollapsed(!isCollapsed);
   }, [isCollapsed]);
 
-  const [feedback] = useLocalStorage(STORAGE_KEYS.FEEDBACK, []);
-
   const print = useCallback(() => {
     if (!formValues.name || !formValues.round || !formValues.role) {
       alert("Please provide name, round, and role.");
@@ -126,7 +124,17 @@ function Home() {
     }
 
     try {
-      if (!feedback.length) {
+      // Read feedback directly from localStorage
+      let feedback;
+      try {
+        feedback = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.FEEDBACK) || "[]");
+        console.log("Feedback from localStorage:", feedback);
+      } catch (error) {
+        console.error("Error parsing feedback:", error);
+        feedback = [];
+      }
+
+      if (!feedback || !feedback.length) {
         alert("Please provide feedback for the candidate.");
         return;
       }
@@ -162,7 +170,7 @@ function Home() {
       console.error("Error generating PDF:", error);
       alert("An error occurred while generating the PDF. Please try again.");
     }
-  }, [formValues, feedback]);
+  }, [formValues]);
 
   useEffect(() => {
     const handleKeyUp = (e) => {
@@ -186,6 +194,7 @@ function Home() {
         <ActionButton onClick={generateQuestion}>
           Generate Questions
         </ActionButton>
+      
         <div
           onClick={hide}
           className="m-3"
@@ -202,7 +211,7 @@ function Home() {
       </div>
       {PLAN_NAME !== "FREE" && (
         <div className="d-flex container w-100">
-          <ActionButton onClick={() => saveItForLater()}>
+          <ActionButton onClick={() => setStoredData({ formValues, questions })}>
             Save
           </ActionButton>
           <ActionButton onClick={clearIt}>
